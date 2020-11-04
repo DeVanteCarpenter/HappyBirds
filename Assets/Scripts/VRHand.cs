@@ -11,21 +11,21 @@ public enum Handness
 
 public class VRHand: MonoBehaviour
 {
+    public Transform vrRig;
+    public Transform teleportVisualRef;
+
     // Reference to animator component on the hand
     private Animator anim;
 
     // Enum to determine whether this is the left or right hand
     public Handness handess;
 
-    // Reference to the empty gameObject represting where held objects
-    // will be anchored to
     public Transform holdPosition;
+    public Transform hoveredObject;
 
-    // The object we are currently hovering over
-    public Transform hoveredObject; // (only public so we can see it in play mode for debugging)
+    public bool isHolding = false;
 
-    // A boolean to keep track of if we are currently holding any object
-    public bool isHolding = false; // (only public so we can see it in play mode for debugging)
+    public 
 
     // Start is called before the first frame update
     void Start()
@@ -41,21 +41,9 @@ public class VRHand: MonoBehaviour
         if( Input.GetButtonDown( handess + "Grip" ) )
         {
             anim.SetBool( "GripPressed", true );
-        }
-
-        // IF the grip button of the proper hand is released run the open animation
-        if( Input.GetButtonUp( handess + "Grip" ) )
-        {
-            anim.SetBool( "GripPressed", false );
-        }
-
-        // If the trigger of the correct hand is pressed
-        if( Input.GetButtonDown( handess + "Trigger" ) )
-        {
-            // Pick up object
-            if( hoveredObject != null )
+            //pick up object
+            if (hoveredObject != null)
             {
-                // Parent to holdPosition transform ref, zero out its transform and turn of gravity
                 hoveredObject.SetParent( holdPosition );
                 hoveredObject.GetComponent<Rigidbody>().useGravity = false;
                 hoveredObject.localPosition = Vector3.zero;
@@ -65,25 +53,46 @@ public class VRHand: MonoBehaviour
             }
         }
 
-        // If the trigger is released
-        if( Input.GetButtonUp( handess + "Trigger" ) )
+        // IF the grip button of the proper hand is released run the open animation
+        if( Input.GetButtonUp( handess + "Grip" ) )
         {
-            // Drop an object here (if holding one)
+            anim.SetBool( "GripPressed", false );
+
+            // Drop the object (if we are holding one)
             if( isHolding == true )
             {
-                // Set the parent of the held object to empty and turn gravity back on
                 hoveredObject.SetParent( null );
                 hoveredObject.GetComponent<Rigidbody>().useGravity = true;
 
                 isHolding = false;
             }
         }
+
+        if (handess == Handness.Right)
+        {
+            Ray ray = new Ray( transform.position, transform.forward );
+            RaycastHit hitInfo = new RaycastHit();
+            if (Physics.Raycast(ray, out hitInfo))
+            {
+                teleportVisualRef.gameObject.SetActive( true );
+                teleportVisualRef.position = hitInfo.point;
+                if( Input.GetButtonUp( handess + "Trigger" ) )
+                {
+                    vrRig.position = new Vector3( hitInfo.point.x, vrRig.position.y, hitInfo.point.z );
+                }
+            }
+            else
+            {
+                teleportVisualRef.gameObject.SetActive( false );
+            }
+        }
+
     }
 
     private void OnTriggerEnter( Collider other )
     {
-        // Set the currently hovered object if it is something we can pick up
-        if( other.tag == "Interactable" )
+        // SEt the currently hovered object if it is something we can pick up
+        if (other.tag == "Interactable")
         {
             hoveredObject = other.transform;
         }
@@ -91,8 +100,8 @@ public class VRHand: MonoBehaviour
 
     private void OnTriggerExit( Collider other )
     {
-        // Un set the currently hovered object if it is the one we just exitededededed....ed
-        if( other.transform == hoveredObject )
+        // Un set the currently hovered object if it is the one we just exited
+        if (other.transform == hoveredObject)
         {
             hoveredObject = null;
         }
