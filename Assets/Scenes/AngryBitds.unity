@@ -445,11 +445,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4dfc78d01306484ca8c3982f24adf6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 512
+  smoothnessValue: 0.2
   vrRig: {fileID: 477080732}
   teleportVisualRef: {fileID: 1623394483}
+  spawnPrefab: {fileID: 0}
   handess: 0
   holdPosition: {fileID: 1788935804}
   hoveredObject: {fileID: 0}
+  heldObject: {fileID: 0}
   isHolding: 0
 --- !u!135 &401751103
 SphereCollider:
@@ -474,6 +480,10 @@ PrefabInstance:
     - target: {fileID: 1931921434379150, guid: eeab5ecd13258ff41afa5003292cd749, type: 3}
       propertyPath: m_Name
       value: ESNASFT VR R Hands Seraphim
+      objectReference: {fileID: 0}
+    - target: {fileID: 1931921434379150, guid: eeab5ecd13258ff41afa5003292cd749, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4267261367064190, guid: eeab5ecd13258ff41afa5003292cd749, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1107,11 +1117,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4dfc78d01306484ca8c3982f24adf6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 0
+  smoothnessValue: 0.2
   vrRig: {fileID: 0}
   teleportVisualRef: {fileID: 0}
+  spawnPrefab: {fileID: 0}
   handess: 1
   holdPosition: {fileID: 1808130778}
   hoveredObject: {fileID: 0}
+  heldObject: {fileID: 0}
   isHolding: 0
 --- !u!135 &1620617735
 SphereCollider:
@@ -1347,6 +1363,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_TagString
       value: Interactable
+      objectReference: {fileID: 0}
+    - target: {fileID: 1632035647321486821, guid: 4a47b63494b570845b7850f032121db3,
+        type: 3}
+      propertyPath: m_Layer
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 6116332676199948110, guid: 4a47b63494b570845b7850f032121db3,
         type: 3}

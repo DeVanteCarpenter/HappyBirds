@@ -11,8 +11,11 @@ public enum Handness
 
 public class VRHand: MonoBehaviour
 {
+    public LayerMask layerMask;
+    public float smoothnessValue = 0.2f;
     public Transform vrRig;
     public Transform teleportVisualRef;
+    public GameObject spawnPrefab;
 
     // Reference to animator component on the hand
     private Animator anim;
@@ -22,10 +25,9 @@ public class VRHand: MonoBehaviour
 
     public Transform holdPosition;
     public Transform hoveredObject;
+    public Transform heldObject;
 
     public bool isHolding = false;
-
-    public 
 
     // Start is called before the first frame update
     void Start()
@@ -44,12 +46,17 @@ public class VRHand: MonoBehaviour
             //pick up object
             if (hoveredObject != null)
             {
-                hoveredObject.SetParent( holdPosition );
-                hoveredObject.GetComponent<Rigidbody>().useGravity = false;
-                hoveredObject.localPosition = Vector3.zero;
-                hoveredObject.localRotation = Quaternion.identity;
-
-                isHolding = true;
+                GrabObject( hoveredObject );
+            }
+            else
+            {
+                Ray ray = new Ray( transform.position, transform.forward );
+                RaycastHit hitInfo = new RaycastHit();
+                if( Physics.Raycast( ray, out hitInfo, 100, layerMask ) )
+                {
+                    // Start Coroutine
+                    StartCoroutine( SmoothMoveToHand( hitInfo.collider.transform ) );
+                }
             }
         }
 
@@ -61,8 +68,8 @@ public class VRHand: MonoBehaviour
             // Drop the object (if we are holding one)
             if( isHolding == true )
             {
-                hoveredObject.SetParent( null );
-                hoveredObject.GetComponent<Rigidbody>().useGravity = true;
+                heldObject.SetParent( null );
+                heldObject.GetComponent<Rigidbody>().useGravity = true;
 
                 isHolding = false;
             }
@@ -75,7 +82,10 @@ public class VRHand: MonoBehaviour
             if (Physics.Raycast(ray, out hitInfo))
             {
                 teleportVisualRef.gameObject.SetActive( true );
-                teleportVisualRef.position = hitInfo.point;
+                Vector3 desiredPosition = hitInfo.point;
+                Vector3 vecToDesired = desiredPosition - teleportVisualRef.position;
+                vecToDesired *= smoothnessValue;
+                teleportVisualRef.position += vecToDesired;
                 if( Input.GetButtonUp( handess + "Trigger" ) )
                 {
                     vrRig.position = new Vector3( hitInfo.point.x, vrRig.position.y, hitInfo.point.z );
@@ -87,6 +97,17 @@ public class VRHand: MonoBehaviour
             }
         }
 
+    }
+
+    private void GrabObject(Transform objectToGrab)
+    {
+        heldObject = objectToGrab;
+        heldObject.SetParent( holdPosition );
+        heldObject.GetComponent<Rigidbody>().useGravity = false;
+        heldObject.localPosition = Vector3.zero;
+        heldObject.localRotation = Quaternion.identity;
+
+        isHolding = true;
     }
 
     private void OnTriggerEnter( Collider other )
@@ -106,4 +127,22 @@ public class VRHand: MonoBehaviour
             hoveredObject = null;
         }
     }
+
+    private IEnumerator SmoothMoveToHand( Transform objectToMove )
+    {
+        float currentTime = 0;
+        Vector3 startPos = objectToMove.position;
+        while( currentTime < 1 )
+        {
+            objectToMove.position = Vector3.Lerp( startPos, holdPosition.position, currentTime );
+
+            yield return null;
+
+            currentTime += Time.deltaTime;
+        }
+
+        GrabObject( objectToMove );
+    }
+
+
 }
