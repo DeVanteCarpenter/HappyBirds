@@ -6,7 +6,6 @@ public class Cannon : MonoBehaviour
 {
     // Prefab asset dragged in from the project window
     public GameObject cannonBallPrefab;
-
     // Empty transform for reference for where to shoot cannon balls from
     public Transform shootPositionRef;
 
@@ -14,6 +13,8 @@ public class Cannon : MonoBehaviour
     public float rotSpeed;
     public float power = 25;
 
+
+    public List<GameObject> objs;
     // Update is called once per frame
     void Update()
     {
@@ -21,6 +22,7 @@ public class Cannon : MonoBehaviour
         if( Input.GetKey( "left" ) )
         {
             transform.Rotate( 0, 0, rotSpeed, Space.Self );
+            Destroy( objs[3] );
         }
         else if( Input.GetKey( "right" ) )
         {
@@ -50,9 +52,9 @@ public class Cannon : MonoBehaviour
     public void FireCannon()
     {
         // Create a new cannon ball from the prefab at the position of the shootPositionRef transform
-        GameObject newCannonBall = Instantiate( cannonBallPrefab, shootPositionRef.position, Quaternion.identity );
+        GameObject cannonBall = Instantiate( cannonBallPrefab, shootPositionRef.position, Quaternion.identity );
 
         // Get the rigidbody and add force forward
-        newCannonBall.GetComponent<Rigidbody>().AddForce( shootPositionRef.up * power, ForceMode.Impulse );
+        cannonBall.GetComponent<Rigidbody>().AddForce( shootPositionRef.up * power, ForceMode.Impulse );
     }
 }
