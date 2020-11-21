@@ -24,6 +24,13 @@ public class VRHand: MonoBehaviour
     public Transform teleportVisualRef;
     public Collider collisionCollider;
     public RawImage fadeScreen;
+    public LineRenderer lR;
+
+    [Header( "Line Control" )]
+    public int pointCount = 50;
+    public float bezierMinHeight = 1f;
+    public float bezierMaxHeight = 3f;
+    public float maxDist = 20;
 
     [Header( "Pickup Control" )]
     public float smoothnessValue = 0.2f;
@@ -33,8 +40,8 @@ public class VRHand: MonoBehaviour
     public float throwForce = 20f;
 
     [Header( "Debug View" )]
-    public Transform hoveredObject;
-    public Transform heldObject;
+    public VRGrabbable hoveredObject;
+    public VRGrabbable heldObject;
     public bool isHolding = false;
 
 
@@ -52,6 +59,8 @@ public class VRHand: MonoBehaviour
         anim = GetComponent<Animator>();
         lastPosition = transform.position;
         collisionCollider.enabled = false;
+        lR.enabled = false;
+        lR.positionCount = pointCount;
     }
 
     // Update is called once per frame
@@ -93,13 +102,17 @@ public class VRHand: MonoBehaviour
             }
             else
             {
-                //Ray ray = new Ray( transform.position, transform.forward );
-                //RaycastHit hitInfo = new RaycastHit();
-                //if( Physics.Raycast( ray, out hitInfo, 100, layerMask ) )
-                //{
-                //    // Start Coroutine
-                //    StartCoroutine( SmoothMoveToHand( hitInfo.collider.transform ) );
-                //}
+                Ray ray = new Ray( transform.position, transform.forward );
+                RaycastHit hitInfo = new RaycastHit();
+                if( Physics.Raycast( ray, out hitInfo, 100, layerMask ) )
+                {
+                    // Start Coroutine
+                    VRGrabbable grabbale = hitInfo.collider.GetComponent<VRGrabbable>();
+                    if (grabbale != null)
+                    {
+                        grabbale.SmoothMove( this );
+                    }
+                }
                 collisionCollider.enabled = true;
             }
         }
@@ -112,8 +125,7 @@ public class VRHand: MonoBehaviour
             // Drop the object (if we are holding one)
             if( isHolding == true )
             {
-                heldObject.SetParent( null );
-                heldObject.GetComponent<Rigidbody>().useGravity = true;
+                heldObject.Release();
 
                 XRNode nodeType;
                 if( handess == Handness.Right )
@@ -152,82 +164,118 @@ public class VRHand: MonoBehaviour
 
         if( Input.GetButtonDown( "Fire" ) && remote )
         {
-            remote.OnHitBigRedButton();
+            VRInteractable interactable = heldObject.GetComponent<VRInteractable>();
+            if (interactable != null)
+            {
+                interactable.Interact();
+            }
         }
 
         if( handess == Handness.Right )
         {
+            // Create and cast ray
             Ray ray = new Ray( transform.position, transform.forward );
             RaycastHit hitInfo = new RaycastHit();
             if( Physics.Raycast( ray, out hitInfo ) )
             {
+                // Turn on Visual ref
                 teleportVisualRef.gameObject.SetActive( true );
+                lR.enabled = true;
+
+                // Smooth out position
                 Vector3 desiredPosition = hitInfo.point;
                 Vector3 vecToDesired = desiredPosition - teleportVisualRef.position;
                 vecToDesired *= smoothnessValue;
                 teleportVisualRef.position += vecToDesired;
-                if( Input.GetButtonDown( handess + "Trigger" ) )
+
+                // Set up our line renderer's positions
+                Vector3 startPoint = transform.position;
+                Vector3 endPoint = teleportVisualRef.position;
+
+                Vector3 midPoint = ( ( endPoint - startPoint ) / 2f ) + startPoint;
+                midPoint += Vector3.up * Mathf.Lerp(
+                    bezierMinHeight, 
+                    bezierMaxHeight, 
+                    Mathf.Clamp(Vector3.Distance(startPoint,endPoint)/maxDist, 0, 1)
+                );
+
+                for( int i = 0; i < pointCount; i++ )
                 {
-                    Vector3 newPos = new Vector3( hitInfo.point.x, vrRig.position.y, hitInfo.point.z );
-                    StartCoroutine( MoveWithFade( newPos ) );
+                    Vector3 lerp1 = Vector3.Lerp( startPoint, midPoint, i / (float)pointCount );
+                    Vector3 lerp2 = Vector3.Lerp( midPoint, endPoint, i / (float)pointCount );
+                    Vector3 curvePos = Vector3.Lerp( lerp1, lerp2, i / (float)pointCount );
+
+                    lR.SetPosition( i, curvePos );
+                }
+
+                //lR.SetPosition( 0, startPoint );
+                //lR.SetPosition( 1, endPoint );
+
+                if( hitInfo.collider.tag == "Floor" )
+                {
+                    lR.startColor = Color.cyan;
+                    lR.endColor = Color.cyan;
+                    // Activate Teleport if trigger pressed
+                    if( Input.GetButtonDown( handess + "Trigger" ) )
+                    {
+                        Vector3 newPos = new Vector3( hitInfo.point.x, vrRig.position.y, hitInfo.point.z );
+                        StartCoroutine( MoveWithFade( newPos ) );
+                    }
+                }
+                else if ( hitInfo.collider.tag == "Interactable")
+                {
+                    lR.startColor = Color.green;
+                    lR.endColor = Color.green;
+                }
+                else 
+                {
+                    lR.startColor = Color.red;
+                    lR.endColor = Color.red;
                 }
             }
             else
             {
+                // If ray did not hit then turn off visual ref
                 teleportVisualRef.gameObject.SetActive( false );
+                lR.enabled = false;
+
+
             }
         }
 
         lastPosition = transform.position;
     }
 
-    private void GrabObject( Transform objectToGrab )
+    public void GrabObject( VRGrabbable objectToGrab )
     {
         remote = objectToGrab.GetComponent<Remote>();
 
         heldObject = objectToGrab;
-        heldObject.SetParent( holdPosition );
-        heldObject.GetComponent<Rigidbody>().useGravity = false;
-        heldObject.localPosition = Vector3.zero;
-        heldObject.localRotation = Quaternion.identity;
+        
 
         isHolding = true;
+
+        objectToGrab.Grab( transform );
     }
 
     private void OnTriggerEnter( Collider other )
     {
         // SEt the currently hovered object if it is something we can pick up
-        if( other.tag == "Interactable" )
+        VRGrabbable grabbale = other.GetComponent<VRGrabbable>(); 
+        if( grabbale != null)
         {
-            hoveredObject = other.transform;
+            hoveredObject = grabbale;
         }
     }
 
     private void OnTriggerExit( Collider other )
     {
         // Un set the currently hovered object if it is the one we just exited
-        if( other.transform == hoveredObject )
+        if( other.GetComponent<VRGrabbable>() == hoveredObject )
         {
             hoveredObject = null;
         }
     }
-
-    private IEnumerator SmoothMoveToHand( Transform objectToMove )
-    {
-        float currentTime = 0;
-        Vector3 startPos = objectToMove.position;
-        while( currentTime < 1 )
-        {
-            objectToMove.position = Vector3.Lerp( startPos, holdPosition.position, currentTime );
-
-            yield return null;
-
-            currentTime += Time.deltaTime;
-        }
-
-        GrabObject( objectToMove );
-    }
-
 
     private IEnumerator MoveWithFade(Vector3 pos)
     {

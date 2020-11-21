@@ -13,7 +13,6 @@ public class Cannon : MonoBehaviour
     public float rotSpeed;
     public float power = 25;
 
-
     public List<GameObject> objs;
     // Update is called once per frame
     void Update()
